@@ -14,10 +14,12 @@ KEY_MAPPINGS = {
     "o" : "up",
     "p" : "down",
     "l" : "land",
-    "k" : "takeoff"
+    "k" : "takeoff",
+    "f" : "backflip"
     }
 
-drone_speed = 20 # 0-100 cm/s
+drone_speed = 80 # 0-100 cm/s
+turn_rate = 100
 kh.start_listening()
 
 def get_movement_actions():
@@ -28,7 +30,7 @@ def get_movement_actions():
     return actions
 
 def get_rc_output_vector(actions):
-    vector = [0, 0, 0, 0, 0]
+    vector = [0, 0, 0, 0, 0, 0]
     for action in actions:
 
         # forward/back
@@ -51,17 +53,20 @@ def get_rc_output_vector(actions):
         
         # rot left/right
         if action == "rotateleft":
-            vector[3] = -drone_speed
+            vector[3] = -turn_rate
         elif action == "rotateright":
-            vector[3] = drone_speed
+            vector[3] = turn_rate
         
         # land/takeoff
         if action == "takeoff":
             vector[4] = 1
         elif action == "land":
             vector[4] = 2
-    
-    return vector[0], vector[1], vector[2], vector[3], vector[4]
+
+        if action == "backflip":
+            vector[5] = 1
+
+    return vector[0], vector[1], vector[2], vector[3], vector[4], vector[5]
 
 def set_drone_speed(speed):
     global drone_speed
