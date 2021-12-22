@@ -15,7 +15,13 @@ KEY_MAPPINGS = {
     "p" : "down",
     "l" : "land",
     "k" : "takeoff",
-    "f" : "backflip"
+    "f" : "backflip",
+    "2" : "speedup",
+    "1" : "speeddown",
+    "3" : "turndown",
+    "4" : "turnup",
+    "0" : "exit",
+    "t" : "swapcam"
     }
 
 drone_speed = 80 # 0-100 cm/s
@@ -30,7 +36,7 @@ def get_movement_actions():
     return actions
 
 def get_rc_output_vector(actions):
-    vector = [0, 0, 0, 0, 0, 0]
+    vector = [0, 0, 0, 0]
     for action in actions:
 
         # forward/back
@@ -57,21 +63,45 @@ def get_rc_output_vector(actions):
         elif action == "rotateright":
             vector[3] = turn_rate
         
-        # land/takeoff
-        if action == "takeoff":
-            vector[4] = 1
-        elif action == "land":
-            vector[4] = 2
+        global drone_speed
+        global turn_rate
 
-        if action == "backflip":
-            vector[5] = 1
+        # change speed
+        if action == "speeddown":
+            drone_speed -= 1
+        elif action == "speedup":
+            drone_speed += 1
+        
+        if action == "turndown":
+            turn_rate -= 1
+        elif action == "turnup":
+            turn_rate += 1
 
-    return vector[0], vector[1], vector[2], vector[3], vector[4], vector[5]
+    return vector[0], vector[1], vector[2], vector[3]
 
-def set_drone_speed(speed):
-    global drone_speed
-    drone_speed = speed
+
+def get_aux_action_vector(actions):
+        vector = [0, 0, 0, 0, 0]
+        for action in actions:
+            
+            # land/takeoff
+            if action == "takeoff":
+                vector[0] = 1
+            elif action == "land":
+                vector[1] = 1
+
+            if action == "backflip":
+                vector[2] = 1
+            
+            if action == "exit":
+                vector[3] = 1
+
+            if action == "swapcam":
+                vector[4] = 1
+        
+        return vector[0], vector[1], vector[2], vector[3], vector[4]
 
 def get_drone_speed():
-    return drone_speed
+    global drone_speed, turn_rate
+    return drone_speed, turn_rate
             

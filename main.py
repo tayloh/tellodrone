@@ -11,12 +11,14 @@ from djitellopy import tello
 
 import movement_model as mm
 import view
+import telemetry
 
-testing = False
+testing = True
 
 def main():
     # TODO: graceful exit, maybe
-    isStarted = False
+    flying = False
+    camera_dir = tello.Tello.CAMERA_FORWARD
 
     if not testing:
         drone = tello.Tello()
@@ -28,48 +30,83 @@ def main():
 
     while True:
 
-        # VIEW/CAMERA
-        frame = drone.get_frame_read().frame
-
-        view.set_info_text("Battery: " + str(drone.get_battery()))
-        view.set_info_text("Speed X: " + str(drone.get_speed_x()))
-        view.set_info_text("Speed Y: " + str(drone.get_speed_y()))
-        view.set_info_text("Speed Z: " + str(drone.get_speed_z()))
-        view.set_info_text("Height: " + str(drone.get_height()))
-        view.set_info_text("Flight time: " + str(drone.get_flight_time()))
-        view.get_view(frame)
-
-        # MOVEMENT
+        # MOVEMENT AND ACTIONS
         actions = mm.get_movement_actions()
-        lr, fb, ud, yaw, tl, bf  = mm.get_rc_output_vector(actions)
+        lr, fb, ud, rot = mm.get_rc_output_vector(actions)
+        takeoff, land, bf, ex, swpcam = mm.get_aux_action_vector(actions)
         
         if not testing:
             
+            tel = telemetry.Telemetry()
+
+            # TELEMETRY
+            tel.pitch = drone.get_pitch()
+            tel.roll = drone.get_roll()
+            tel.yaw = drone.get_yaw()
+            tel.speed_x = drone.get_speed_x()
+            tel.speed_y = drone.get_speed_y()
+            tel.speed_z = drone.get_speed_z()
+            tel.acc_x = drone.get_acceleration_x()
+            tel.acc_y = drone.get_acceleration_y()
+            tel.acc_z = drone.get_acceleration_z()
+            tel.temp = drone.get_temperature()
+            tel.height = drone.get_height()
+            tel.tof_dist = drone.get_distance_tof()
+            tel.abs_height = drone.get_barometer()
+            tel.battery = drone.get_battery()
+            tel.flight_time = drone.get_flight_time()
+            tel.speedp, tel.turnp = mm.get_drone_speed()
+            
+            # VIEW/CAMERA
+            frame = drone.get_frame_read().frame
+            view.get_view(frame, tel)
+
+            # AUX ACTIONS
+
             # takeoff and landing
-            if tl == 1 and not isStarted:
+            if takeoff == 1 and not flying:
                 # blocking action, needs own thread
                 takeoff_thread = threading.Thread(target=drone.takeoff)
                 takeoff_thread.start()
-                isStarted = True
+                flying = True
                 #drone.takeoff()
 
-            elif tl == 2 and isStarted:
+            elif land == 1 and flying:
                 landing_thread = threading.Thread(target=drone.land)
                 landing_thread.start()
-                isStarted = False
+                flying = False
                 #drone.land()
             
-            if bf == 1:
-                # TODO: gracefully tell the user it couldnt do bf
-                backflip_thread = threading.Thread(target=drone.flip_back)
-                backflip_thread.start()
-                #drone.flip_back()
+            # backflip
+            if bf == 1 and flying:
+                try:
+                    backflip_thread = threading.Thread(target=drone.flip_back)
+                    backflip_thread.start()
+                    #drone.flip_back()
+                except:
+                    print("Backflip not available.")
+            
+            # exit
+            if ex == 1:
+                drone.end()
+                flying = False
+                raise Exception("Flight ending...")
+            
+            if swpcam == 1:
+                if camera_dir == tello.Tello.CAMERA_FORWARD:
+                    drone.set_video_direction(tello.Tello.CAMERA_DOWNWARD)
+                    camera_dir = tello.Tello.CAMERA_DOWNWARD
 
-            drone.send_rc_control(lr, fb, ud, yaw)
+                elif camera_dir == tello.Tello.CAMERA_DOWNWARD:
+                    drone.set_video_direction(tello.Tello.CAMERA_FORWARD)
+                    camera_dir = tello.Tello.CAMERA_FORWARD
+
+            # RC ACTION
+            drone.send_rc_control(lr, fb, ud, rot)
         
         if testing:
             #pass
-            print(lr, fb, ud, yaw, tl)
+            print(lr, fb, ud, rot)
 
         time.sleep(0.05)
 
@@ -77,4 +114,8 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as e:
+        print("Exiting drone...")
+        print(e)
