@@ -37,6 +37,10 @@ def get_movement_actions():
 
 def get_rc_output_vector(actions):
     vector = [0, 0, 0, 0]
+    
+    global drone_speed
+    global turn_rate
+
     for action in actions:
 
         # forward/back
@@ -62,9 +66,6 @@ def get_rc_output_vector(actions):
             vector[3] = -turn_rate
         elif action == "rotateright":
             vector[3] = turn_rate
-        
-        global drone_speed
-        global turn_rate
 
         # change speed
         if action == "speeddown":
