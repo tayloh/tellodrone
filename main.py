@@ -13,7 +13,7 @@ import movement_model as mm
 import view
 import telemetry
 
-testing = True
+testing = False
 
 def main():
     # TODO: graceful exit, maybe
