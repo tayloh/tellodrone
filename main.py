@@ -16,6 +16,7 @@ import telemetry
 testing = False
 
 def main():
+
     # TODO: graceful exit, maybe
     flying = False
     camera_dir = tello.Tello.CAMERA_FORWARD
@@ -27,6 +28,7 @@ def main():
         drone.connect()
         print("Connected.")
         drone.streamon()
+    
 
     while True:
 
@@ -60,6 +62,18 @@ def main():
             # VIEW/CAMERA
             frame = drone.get_frame_read().frame
             view.get_view(frame, tel)
+            # this is mega blocking, need to fix before face detection
+            # def view_loop():
+            #     while True:
+            #         view.get_view(frame, tel)
+            
+            # global is_viewing
+            # if is_viewing == False:
+            #     view_thread = threading.Thread(target=view_loop)
+            #     view_thread.start()
+            #     is_viewing = True
+
+            # view.get_view(frame, tel)
 
             # AUX ACTIONS
 

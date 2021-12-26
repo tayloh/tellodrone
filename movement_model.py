@@ -21,7 +21,7 @@ KEY_MAPPINGS = {
     "3" : "turndown",
     "4" : "turnup",
     "0" : "exit",
-    "t" : "swapcam"
+    "t" : "swapcam" # downvision does not seem to exist
     }
 
 drone_speed = 80 # 0-100 cm/s
@@ -67,7 +67,7 @@ def get_rc_output_vector(actions):
         elif action == "rotateright":
             vector[3] = turn_rate
 
-        # change speed
+        # change speed TODO: need to clamp
         if action == "speeddown":
             drone_speed -= 1
         elif action == "speedup":

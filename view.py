@@ -8,12 +8,15 @@ import vision
 green = (0, 255, 0)
 
 def get_view(frame, telemetry):
-
+    result = frame.copy()
     # find people in frame (doesnt work very well tbh)
     # result = vision.haar_detect_bodies(frame)
     # result = vision.hog_detect_bodies(frame)
 
-    result = vision.haar_detect_faces_frontal(frame)
+    # TODO: need to run facial detection on separate thread
+    # and keep track of the last found rects and draw them
+    # on the main viewing thread
+    # result = vision.haar_detect_faces_frontal(frame)
     # result = vision.haar_detect_faces_profile(result)
 
     # draw gui elements
