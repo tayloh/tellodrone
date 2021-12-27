@@ -18,12 +18,17 @@ class MultikeyListener:
     def on_press(self, key):
         """Called on key press.
         """
+
+        if key == keyboard.Key.esc:
+            print("[Listener] Listener thread stopped")
+            return False
+
         try:
             if key.char not in self.keys_pressed:
                 self.keys_pressed.append(key.char)
 
         except AttributeError:
-            print(f"{key} has no char value")
+            print(f"[Listener] {key} has no char value")
     
     def on_release(self, key):
         """Called on key release.
@@ -32,14 +37,14 @@ class MultikeyListener:
             if key.char in self.keys_pressed:
                 self.keys_pressed.remove(key.char)
         except AttributeError:
-            print(f"{key} has no char value")
+            print(f"[Listener] {key} has no char value")
     
     def get_pressed(self):
         """Returns a list of the keys currently being pressed.
         """
         if not self.listening:
             self.keys_pressed = []
-            print("Listener is off")
+            print("[Listener] Listener is off")
 
         return self.keys_pressed
     
@@ -47,16 +52,19 @@ class MultikeyListener:
         """Starts the keyboard listener thread.
         """
         if self.listening:
-            print("Listener is already on")
+            print("[Listener] Listener is already on")
         else:
+            print("[Listener] Listener thread started")
             self.listener.start()
             self.listening = True
     
     def stop_listener(self):
-        """Joins the keyboard listener thread.
+        """(Deprecated) Joins the keyboard listener thread.
+        Does not work because the listener must be a daemon.
         """
         if not self.listening:
-            print("Listener is already off")
+            print("[Listener] Listener is already off")
         else:
-            self.listener.join()
+            print("[Listener] Listener thread stopped")
             self.listening = False
+            self.listener.join()

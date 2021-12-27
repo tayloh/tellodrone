@@ -7,6 +7,7 @@ import threading
 import time
 import cv2 as cv
 import vision
+import numpy as np
 
 class DroneController:
 
@@ -62,14 +63,15 @@ class DroneController:
         """Connects to drone and starts listening for input.
         """
         if self.is_on:
-            print("Drone is already on")
+            print("[DroneController] Drone is already on")
         else:
             self.input_handler.start_listener() # daemon = True
             self.drone.connect()
             self.is_on = True
-            print("Drone is connected")
-            self.control_thread = threading.Thread(target=self._control_loop, daemon=True) 
-            self.control_thread.start()      
+            print("[DroneController] Drone is connected")
+            self.control_thread = threading.Thread(target=self._control_loop) 
+            self.control_thread.start()
+            print("[DroneController] Control thread started")      
 
     def start_video_stream(self):
         """Starts the drones video stream.
@@ -80,16 +82,26 @@ class DroneController:
         """Stops the drones video stream.
         """
         self.drone.streamoff()
+
+    def get_stream_status(self):
+        """Returns status of video stream (on/off).
+        """
+        return self.drone.stream_on
     
     def stop(self):
-        """Lands the drone, turns off the stream, and stops the listener thread.
+        """Lands the drone, turns off the stream.
         """
         if not self.is_on:
-            print("Drone is already off")
+            print("[DroneController] Drone is already off")
         else:
-            self.drone.end()
-            self.input_handler.stop_listener()
             self.is_on = False
+            self.control_thread.join()
+            if self.drone.is_flying:
+                self._land_nonblocking()
+                self.drone.send_rc_control(0, 0, 0, 0)
+
+            # self.drone.end() this fucking fucks with everything?
+            print("[DroneController] Control thread stopped")
     
     def get_video_frame(self):
         """Gets a frame from the drones video capture.
@@ -107,7 +119,10 @@ class DroneController:
     def _control_loop(self):
         """Main control loop.
         """
-        while self.is_on:
+        while True:
+            if not self.is_on:
+                break
+
             actions = self._get_actions_from_keys()
             lr, fb, ud, rot = self._get_rc_vector_from_actions(actions)
 
@@ -131,19 +146,20 @@ class DroneController:
                     self.turn_rate -= 1
 
             self.drone.send_rc_control(lr, fb, ud, rot)
+
             self._update_telemetry_from_drone()
             time.sleep(0.05)
 
     def _land_nonblocking(self):
         """Lands the drone while still being able to take rc input.
         """
-        landing_thread = threading.Thread(target=self.drone.land, daemon=True)
+        landing_thread = threading.Thread(target=self.drone.land)
         landing_thread.start()
     
     def _takeoff_nonblocking(self):
         """Takes off the drone while still being able to take rc input.
         """
-        takeoff_thread = threading.Thread(target=self.drone.takeoff, daemon=True)
+        takeoff_thread = threading.Thread(target=self.drone.takeoff)
         takeoff_thread.start()
 
     
@@ -215,38 +231,53 @@ class DroneView:
     # TODO Move droneview to own file with all gui related stuff.
     # TODO Use Tkinter for the gui.
     GREEN = (0, 255, 0)
+    BLANK = np.zeros(shape=(720, 960, 3), dtype=np.uint8)
+    FACEDETECTION_WAITTIME = 0.2
 
     def __init__(self, drone):
         self.drone = drone
 
         self.has_facerects = False
-        self.facerects_last = None
-        self.facerects = None
+        self.facerects_last = ()
+        self.facerects = ()
         self.facedetection_thread = None
         self.detect_faces = False
     
     def detect_faces_on(self):
         """Turns on face detection.
         """
-        self.facedetection_thread = threading.Thread(target=self._face_detection, daemon=True)
-        self.facedetection_thread.start()
-        self.detect_faces = True
+        if self.drone.get_stream_status():
+            self.detect_faces = True
+            self.facedetection_thread = threading.Thread(target=self._face_detection)
+            self.facedetection_thread.start()
+            print("[DroneView] Face detect thread started")
+        else:
+            print("[DroneView] Video stream is off")
 
     def detect_faces_off(self):
         """Turns off face detection.
         """
         self.detect_faces = False # -> stops facedetection thread
+        self.facedetection_thread.join()
+        print("[DroneView] Face detect thread stopped")
 
     def show_drone_view(self):
         """Shows the drones view along with HUD.
         """
-        frame = self.drone.get_video_frame()
+        frame = DroneView.BLANK
+
+        if self.drone.get_stream_status():
+            try:
+                frame = self.drone.get_video_frame()
+            except:
+                print("[DroneView] Tello failed to grab first frame")
+
         data = self.drone.get_drone_telemetry()
 
         if self.detect_faces:
             if self.has_facerects:
                 self.facerects_last = self.facerects
-                self.facerects = None
+                self.facerects = ()
                 self.has_facerects = False
             result = self._draw_face_rects(frame, self.facerects_last)
 
@@ -255,6 +286,11 @@ class DroneView:
 
         cv.imshow("drone view", result)
         cv.waitKey(1)
+
+    def exit_view(self):
+        self.detect_faces_off()
+        cv.waitKey(1000)
+        cv.destroyAllWindows()
 
     def _draw_battery(self, frame, battery):
         """Draws graphical view of battery percentage.
@@ -307,9 +343,13 @@ class DroneView:
         """Runs face detection.
         """
         while self.detect_faces:
-            img = self.drone.get_video_frame()
-            self.facerects = vision.haar_detect_faces_frontal(img)
-            self.has_facerects = True
+            try:
+                img = self.drone.get_video_frame()
+                self.facerects = vision.haar_detect_faces_frontal(img)
+                self.has_facerects = True
+            except:
+                print("[DroneView] Tello failed to grab first frame")
+            time.sleep(DroneView.FACEDETECTION_WAITTIME)
 
 
 class DroneTelemetry:
