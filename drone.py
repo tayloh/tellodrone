@@ -26,7 +26,6 @@ class DroneController:
     CONTROL_SPEEDDOWN = "speeddown"
     CONTROL_TURNRATEDOWN = "turndown"
     CONTROL_TURNRATEUP = "turnup"
-    CONTROL_EXIT = "exit"
 
     MAX_SPEED = 100
     MIN_SPEED = 0
@@ -46,8 +45,7 @@ class DroneController:
         "2" : CONTROL_SPEEDUP,
         "1" : CONTROL_SPEEDDOWN,
         "3" : CONTROL_TURNRATEDOWN,
-        "4" : CONTROL_TURNRATEUP,
-        "0" : CONTROL_EXIT,
+        "4" : CONTROL_TURNRATEUP
     }
 
     def __init__(self):
@@ -161,7 +159,6 @@ class DroneController:
         """
         takeoff_thread = threading.Thread(target=self.drone.takeoff)
         takeoff_thread.start()
-
     
     def _get_rc_vector_from_actions(self, actions):
         """Gets the rc control vector from a list of actions.
@@ -232,7 +229,7 @@ class DroneView:
     # TODO Use Tkinter for the gui.
     GREEN = (0, 255, 0)
     BLANK = np.zeros(shape=(720, 960, 3), dtype=np.uint8)
-    FACEDETECTION_WAITTIME = 0.2
+    FACEDETECTION_WAITTIME = 0.05
 
     def __init__(self, drone):
         self.drone = drone
@@ -279,12 +276,13 @@ class DroneView:
                 self.facerects_last = self.facerects
                 self.facerects = ()
                 self.has_facerects = False
-            result = self._draw_face_rects(frame, self.facerects_last)
+            frame = self._draw_face_rects(frame, self.facerects_last)
 
-        result = self._draw_battery(frame, data.battery)
-        result = self._draw_flight_telemetry(result, data)
+        frame = self._draw_battery(frame, data.battery)
+        frame = self._draw_flight_telemetry(frame, data)
+        frame = self._draw_crosshair(frame)
 
-        cv.imshow("drone view", result)
+        cv.imshow("drone view", frame)
         cv.waitKey(1)
 
     def exit_view(self):
@@ -328,6 +326,19 @@ class DroneView:
                 text = key + " : " + telemetry_dict[key]
                 cv.putText(frame, text, (x_pos, y_pos_start + y_delta*i),
                 cv.FONT_HERSHEY_PLAIN, 1, DroneView.GREEN, 1, cv.LINE_AA)
+
+        return frame
+    
+    def _draw_crosshair(self, frame):
+        """Draws a crosshair in the middle of the frame.
+        """
+        size = 15
+        horiz_p1 = (frame.shape[1]//2 - size, frame.shape[0]//2) 
+        horiz_p2 = (frame.shape[1]//2 + size, frame.shape[0]//2) 
+        vert_p1 = (frame.shape[1]//2, frame.shape[0]//2 - size)
+        vert_p2 = (frame.shape[1]//2, frame.shape[0]//2 + size)
+        cv.line(frame, horiz_p1, horiz_p2, DroneView.GREEN, 2)
+        cv.line(frame, vert_p1, vert_p2, DroneView.GREEN, 2)
 
         return frame
     

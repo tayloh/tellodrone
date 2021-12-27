@@ -1,12 +1,13 @@
 
 from drone import DroneController, DroneView
 
+drone = DroneController()
+view = DroneView(drone)
+
 def main():
-    drone = DroneController()
+    global drone, view
     drone.start()
     drone.start_video_stream()
-    
-    view = DroneView(drone)
     view.detect_faces_on()
 
     while True:
@@ -23,5 +24,7 @@ if __name__ == "__main__":
     try:
         main()
     except Exception as e:
+        drone.stop()
+        view.exit_view()
         print("Exiting with error.")
         print(e)
