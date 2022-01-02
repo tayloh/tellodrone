@@ -50,7 +50,7 @@ class DroneController:
 
     def __init__(self):
         self.input_handler = MultikeyListener()
-        self.drone = tello.Tello()
+        # self.drone = tello.Tello()
         self.control_thread = None
         self.telemetry_data = DroneTelemetry()
         self.is_on = False
@@ -63,6 +63,7 @@ class DroneController:
         if self.is_on:
             print("[DroneController] Drone is already on")
         else:
+            self.drone = tello.Tello()
             self.input_handler.start_listener() # daemon = True
             self.drone.connect()
             self.is_on = True
@@ -98,7 +99,9 @@ class DroneController:
                 self._land_nonblocking()
                 self.drone.send_rc_control(0, 0, 0, 0)
 
-            # self.drone.end() this fucking fucks with everything?
+            self.drone.streamoff()
+            
+            #self.drone.end() #this fucking fucks with everything?
             print("[DroneController] Control thread stopped")
     
     def get_video_frame(self):
@@ -137,10 +140,10 @@ class DroneController:
                     self.speed -= 1
             
             if DroneController.CONTROL_TURNRATEUP in actions:
-                if self.speed < DroneController.MAX_SPEED:
+                if self.turn_rate < DroneController.MAX_SPEED:
                     self.turn_rate += 1
-            elif DroneController.CONTROL_SPEEDDOWN in actions:
-                if self.speed > DroneController.MIN_SPEED:
+            elif DroneController.CONTROL_TURNRATEDOWN in actions:
+                if self.turn_rate > DroneController.MIN_SPEED:
                     self.turn_rate -= 1
 
             self.drone.send_rc_control(lr, fb, ud, rot)
@@ -203,8 +206,6 @@ class DroneController:
         self.telemetry_data.pitch = self.drone.get_pitch()
         self.telemetry_data.roll = self.drone.get_roll()
         self.telemetry_data.yaw = self.drone.get_yaw()
-        self.telemetry_data.speed_x = self.drone.get_speed_x()
-        self.telemetry_data.speed_y = self.drone.get_speed_y()
         self.telemetry_data.speed_z = self.drone.get_speed_z()
         self.telemetry_data.acc_x = self.drone.get_acceleration_x()
         self.telemetry_data.acc_y = self.drone.get_acceleration_y()
@@ -257,7 +258,7 @@ class DroneView:
         if self.detect_faces_on:
             self.detect_faces = False # -> stops facedetection thread
             self.facedetection_thread.join()
-            
+
             self.has_facerects = False
             self.facerects_last = () # -> reset rectangles
             print("[DroneView] Face detect thread stopped")
@@ -268,6 +269,9 @@ class DroneView:
         """Shows the drones view along with HUD.
         """
         frame = DroneView.BLANK
+
+        if not self.drone.is_on:
+            return frame
 
         if self.drone.get_stream_status():
             try:
@@ -287,8 +291,10 @@ class DroneView:
         frame = self._draw_flight_telemetry(frame, data)
         frame = self._draw_crosshair(frame)
 
-        cv.imshow("drone view", frame)
-        cv.waitKey(1)
+        #cv.imshow("drone view", frame)
+        #cv.waitKey(1)
+        frame = cv.cvtColor(frame, cv.COLOR_BGR2RGB)
+        return frame
 
     def exit_view(self):
         self.detect_faces_off()
@@ -376,8 +382,6 @@ class DroneTelemetry:
         self.pitch = 0
         self.roll = 0
         self.yaw = 0
-        self.speed_x = 0
-        self.speed_y = 0
         self.speed_z = 0
         self.acc_x = 0
         self.acc_y = 0
@@ -398,8 +402,6 @@ class DroneTelemetry:
             "pitch" : str(self.pitch),
             "roll" : str(self.roll),
             "yaw" : str(self.yaw),
-            "speed_x" : str(self.speed_x),
-            "speed_y" : str(self.speed_y),
             "speed_z" : str(self.speed_z),
             "acc_x" : str(self.acc_x),
             "acc_y" : str(self.acc_y),
