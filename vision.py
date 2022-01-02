@@ -45,12 +45,12 @@ def haar_detect_faces_frontal(img):
     gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
 
     global haar_detect_faces_frontal
-    rects = haar_face_frontal.detectMultiScale(gray, scaleFactor = 1.05, minNeighbors = 5)
+    rects = haar_face_frontal.detectMultiScale(gray, scaleFactor = 1.05, minNeighbors = 8)
 
-    for x, y, w, h in rects:
-        cv.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), 2)
-    
-    return img
+    # for x, y, w, h in rects:
+    #     cv.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), 2)
+
+    return rects
 
 def haar_detect_faces_profile(img):
     gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
