@@ -254,9 +254,15 @@ class DroneView:
     def detect_faces_off(self):
         """Turns off face detection.
         """
-        self.detect_faces = False # -> stops facedetection thread
-        self.facedetection_thread.join()
-        print("[DroneView] Face detect thread stopped")
+        if self.detect_faces_on:
+            self.detect_faces = False # -> stops facedetection thread
+            self.facedetection_thread.join()
+            
+            self.has_facerects = False
+            self.facerects_last = () # -> reset rectangles
+            print("[DroneView] Face detect thread stopped")
+        else:
+            print("[DroneView] Face detection is already off")
 
     def show_drone_view(self):
         """Shows the drones view along with HUD.
@@ -271,13 +277,12 @@ class DroneView:
 
         data = self.drone.get_drone_telemetry()
 
-        if self.detect_faces:
-            if self.has_facerects:
-                self.facerects_last = self.facerects
-                self.facerects = ()
-                self.has_facerects = False
-            frame = self._draw_face_rects(frame, self.facerects_last)
-
+        if self.detect_faces and self.has_facerects:
+            self.facerects_last = self.facerects
+            # self.facerects = () not needed
+            self.has_facerects = False
+        
+        frame = self._draw_face_rects(frame, self.facerects_last)
         frame = self._draw_battery(frame, data.battery)
         frame = self._draw_flight_telemetry(frame, data)
         frame = self._draw_crosshair(frame)

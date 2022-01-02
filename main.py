@@ -11,6 +11,7 @@ def main():
     view.detect_faces_on()
 
     while True:
+        # TODO test if stream can be turned off without problems now
         _ = view.show_drone_view()
 
         if drone.get_drone_telemetry().battery < 10:
